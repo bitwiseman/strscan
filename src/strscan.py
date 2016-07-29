@@ -1,5 +1,7 @@
 import copy
 import re
+# TOOD: add unicode support without changing code
+# import six
 
 
 __all__ = ['Scanner', 'text_coords']
@@ -9,6 +11,7 @@ class Scanner(object):
 
     """
     :class:`Scanner` is a near-direct port of Ruby's ``StringScanner``.
+    It has been adapted to also take functions
 
     The aim is to provide for lexical scanning operations on strings::
 
@@ -267,7 +270,7 @@ class Scanner(object):
         self.match_history.pop()
         self._match = self.match_history[-1]
 
-    def scan_full(self, regex, return_string=True, advance_pointer=True):
+    def scan_full(self, matcher, return_string=True, advance_pointer=True):
         """
         Match from the current position.
 
@@ -289,8 +292,8 @@ class Scanner(object):
             >>> s.pos
             5
         """
-        regex = get_regex(regex)
-        self.match = regex.match(self.string, self.pos)
+        matcher = get_matcher(matcher)
+        self.match = matcher.match(self.string, self.pos)
         if not self.match:
             return
         if advance_pointer:
@@ -299,7 +302,7 @@ class Scanner(object):
             return self.match.group(0)
         return len(self.match.group(0))
 
-    def search_full(self, regex, return_string=True, advance_pointer=True):
+    def search_full(self, matcher, return_string=True, advance_pointer=True):
         """
         Search from the current position.
 
@@ -321,8 +324,8 @@ class Scanner(object):
             >>> s.pos
             5
         """
-        regex = get_regex(regex)
-        self.match = regex.search(self.string, self.pos)
+        matcher = get_matcher(matcher)
+        self.match = matcher.search(self.string, self.pos)
         if not self.match:
             return
         start_pos = self.pos
@@ -478,6 +481,8 @@ def text_coords(string, position):
         >>> text_coords(s, 15)
         (2, 1, 'mnopqr')
     """
+    # TODO: Make newline markers configurable
+    # TODO: Set tab size?
     line_start = string.rfind('\n', 0, position) + 1
     line_end = string.find('\n', position)
     lineno = string.count('\n', 0, position)
@@ -486,26 +491,32 @@ def text_coords(string, position):
     return (lineno, columnno, line)
 
 
-def get_regex(regex):
+def get_matcher(matcher):
     """
-    Ensure we have a compiled regular expression object.
+    Ensure we have a compiled regular expression or matcher object.
 
         >>> import re
-        >>> get_regex('string') # doctest: +ELLIPSIS
+        >>> get_matcher('string') # doctest: +ELLIPSIS
         <_sre.SRE_Pattern object at 0x...>
         >>> pattern = re.compile(r'string')
-        >>> get_regex(pattern) is pattern
+        >>> get_matcher(pattern) is pattern
         True
-        >>> get_regex(3) # doctest: +ELLIPSIS
+        >>> get_matcher(3) # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
         TypeError: Invalid regex type: 3
     """
-    if isinstance(regex, basestring):
+    if isinstance(matcher, basestring):
         return re.compile(regex)
-    elif not isinstance(regex, re._pattern_type):
-        raise TypeError("Invalid regex type: %r" % (regex,))
-    return regex
+    # TODO: allow method of signature method(string, position) returns Match (basically ducktype of re._match_type)
+    # elif isinstance(regex, basestring):
+    #     return re.compile(regex)
+    # TODO: allow instance of Matcher class
+    # elif isinstance(regex, basestring):
+    #     return re.compile(regex)
+    elif not isinstance(matcher, re._pattern_type):
+        raise TypeError("Invalid regex type: %r" % (matcher,))
+    return matcher
 
 
 def _get_tests():
